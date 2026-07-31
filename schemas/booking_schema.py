@@ -6,3 +6,8 @@ class BookingStatusEnum(str, Enum):
     ACTIVE = "ACTIVE"
     RETURNED = "RETURNED"
     CANCELLED = "CANCELLED"
+
+class BookingConditionEnum(str, Enum):
+    GOOD = "GOOD"
+    DAMAGED = "DAMAGED"
+    MISSING = "MISSING"

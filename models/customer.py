@@ -9,10 +9,11 @@ class Customer(Timestamp, Base):
 
 
     __tablename__ = "customers"
+    
 
     customer_id = Column(Integer, primary_key=True, index=True)
     name = Column(String(150), nullable=False)
-    national_id_url = Column(String(500), nullable=True)
+    nationalID_Photo = Column("national_id_photo", String(500), nullable=True)
     contact = Column(String(30), unique=True, index=True, nullable=False)
     referral_name = Column(String(150), nullable=True)
     referral_phone = Column(String(30), nullable=True)

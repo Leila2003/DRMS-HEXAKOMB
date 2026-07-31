@@ -1,13 +1,3 @@
-"""
-Import every model here so that:
-1. SQLAlchemy can resolve the string-based relationship() references between
-   them (e.g. Booking.customer -> "Customer") no matter which module is
-   imported first.
-2. Base.metadata knows about all tables, which Alembic's autogenerate needs.
-
-Usage elsewhere: `from database.database import Base` then
-`import models` (or `from models import Booking, Customer, ...`).
-"""
 
 from models.booking import Booking, BookingStatus
 from models.booking_item import BookingItem, ItemCondition

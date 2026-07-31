@@ -18,7 +18,6 @@ class BookingStatus(str, enum.Enum):
 
 class Booking(Timestamp, Base):
    
-
     __tablename__ = "bookings"
 
     booking_id = Column(Integer, primary_key=True, index=True)

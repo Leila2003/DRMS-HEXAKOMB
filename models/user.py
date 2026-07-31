@@ -1,12 +1,11 @@
 import enum
-from datetime import datetime
-from typing import Optional
+import uuid
 
-from sqlalchemy import DateTime, Enum, String
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Enum, String
+from sqlalchemy.dialects.postgresql import UUID
 
 from database.database import Base
+from models.timestamp import Timestamp
 
 
 class UserRole(str, enum.Enum):
@@ -14,27 +13,17 @@ class UserRole(str, enum.Enum):
     STAFF = "staff"
 
 
-class User(Base):
-    """An admin/staff account that logs into the dashboard (not a rental customer)."""
+class User(Timestamp, Base):
+
+
 
     __tablename__ = "users"
 
-    user_id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(150), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.STAFF, nullable=False)
-
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-    # soft delete: non-null means this row is treated as removed
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    @property
-    def is_deleted(self) -> bool:
-        return self.deleted_at is not None
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    name = Column(String(150), nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.STAFF, nullable=False)
 
     def __repr__(self) -> str:
         return f"<User user_id={self.user_id} name={self.name!r} role={self.role}>"

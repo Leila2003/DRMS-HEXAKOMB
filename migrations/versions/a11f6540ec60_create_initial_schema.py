@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -52,7 +53,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_items_category_category_id'), 'items_category', ['category_id'], unique=False)
     op.create_table('users',
-    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
     sa.Column('name', sa.String(length=150), nullable=False),
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('password_hash', sa.String(length=255), nullable=False),
@@ -67,7 +68,7 @@ def upgrade() -> None:
     op.create_table('bookings',
     sa.Column('booking_id', sa.Integer(), nullable=False),
     sa.Column('customer_id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
     sa.Column('pickup_date', sa.Date(), nullable=False),
     sa.Column('event_date', sa.Date(), nullable=True),
     sa.Column('return_date', sa.Date(), nullable=False),
@@ -93,7 +94,7 @@ def upgrade() -> None:
     sa.Column('condition', sa.Enum('PENDING', 'GOOD', 'DAMAGED', 'MISSING', name='itemcondition'), nullable=False),
     sa.Column('condition_notes', sa.Text(), nullable=True),
     sa.Column('returned_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('returned_by_id', sa.Integer(), nullable=True),
+    sa.Column('returned_by_id', postgresql.UUID(as_uuid=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),

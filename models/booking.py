@@ -35,6 +35,7 @@ class Booking(Timestamp, Base):
     customer = relationship("Customer", back_populates="bookings")
     user = relationship("User")
     items = relationship("BookingItem", back_populates="booking", cascade="all, delete-orphan")
+    photos = relationship("BookingPhoto", back_populates="booking", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Booking booking_id={self.booking_id} status={self.status}>"

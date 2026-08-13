@@ -1,4 +1,5 @@
 import enum
+import uuid
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -16,13 +17,13 @@ class ItemCondition(str, enum.Enum):
 
 
 class BookingItem(Timestamp, Base):
-  
+
 
     __tablename__ = "booking_item"
 
-    booking_item_id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.booking_id"), nullable=False, index=True)
-    category_id = Column(Integer, ForeignKey("items_category.category_id"), nullable=False, index=True)
+    booking_item_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.booking_id"), nullable=False, index=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("items_category.category_id"), nullable=False, index=True)
     quantity = Column(Integer, default=1, nullable=False)
     unit_price = Column(Integer, default=0, nullable=False)
     description = Column(Text, nullable=True)

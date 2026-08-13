@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -19,7 +20,7 @@ def list_notifications(db: Session = Depends(get_db), _user: User = Depends(get_
 
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 def mark_notification_read(
-    notification_id: int,
+    notification_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):

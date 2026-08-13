@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
@@ -31,7 +32,7 @@ def create_category(db: Session, payload: CategoryCreate) -> ItemCategory:
 
 
 def upload_category_image(
-    db: Session, category_id: int, file: UploadFile
+    db: Session, category_id: UUID, file: UploadFile
 ) -> Optional[ItemCategory]:
     category = get_category(db, category_id)
     if category is None:
@@ -50,7 +51,7 @@ def list_categories(db: Session, search: Optional[str] = None) -> List[ItemCateg
     return query.order_by(ItemCategory.item_name).all()
 
 
-def get_category(db: Session, category_id: int) -> Optional[ItemCategory]:
+def get_category(db: Session, category_id: UUID) -> Optional[ItemCategory]:
     category = db.get(ItemCategory, category_id)
     if category is None or category.deleted_at is not None:
         return None
@@ -58,7 +59,7 @@ def get_category(db: Session, category_id: int) -> Optional[ItemCategory]:
 
 
 def update_category(
-    db: Session, category_id: int, payload: CategoryUpdate
+    db: Session, category_id: UUID, payload: CategoryUpdate
 ) -> Optional[ItemCategory]:
     category = get_category(db, category_id)
     if category is None:
@@ -78,7 +79,7 @@ def update_category(
     return category
 
 
-def delete_category(db: Session, category_id: int) -> bool:
+def delete_category(db: Session, category_id: UUID) -> bool:
     category = get_category(db, category_id)
     if category is None:
         return False

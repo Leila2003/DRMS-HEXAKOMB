@@ -1,11 +1,12 @@
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from models import Booking, BookingStatus, ItemCondition
 
 
-def get_reputation(db: Session, customer_id: int) -> dict:
+def get_reputation(db: Session, customer_id: UUID) -> dict:
     closed = (
         db.query(Booking)
         .filter(

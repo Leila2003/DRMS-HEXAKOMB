@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,7 +26,7 @@ class CategoryUpdate(BaseModel):
 class CategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    category_id: int
+    category_id: UUID
     item_name: str
     item_type: Optional[str] = None
     image_url: Optional[str] = None

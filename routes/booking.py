@@ -1,5 +1,6 @@
 import math
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -48,7 +49,7 @@ def list_bookings(
 
 @router.get("/{booking_id}", response_model=BookingRead)
 def get_booking(
-    booking_id: int,
+    booking_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -60,7 +61,7 @@ def get_booking(
 
 @router.post("/{booking_id}/photos", response_model=BookingRead)
 def upload_booking_photos(
-    booking_id: int,
+    booking_id: UUID,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
@@ -73,7 +74,7 @@ def upload_booking_photos(
 
 @router.post("/{booking_id}/return", response_model=BookingRead)
 def return_booking(
-    booking_id: int,
+    booking_id: UUID,
     payload: ReturnRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

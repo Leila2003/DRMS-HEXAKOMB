@@ -1,5 +1,6 @@
 import math
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -73,7 +74,7 @@ def lookup_customer(
 
 @router.get("/{customer_id}", response_model=CustomerRead)
 def get_customer(
-    customer_id: int,
+    customer_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -85,7 +86,7 @@ def get_customer(
 
 @router.get("/{customer_id}/reputation", response_model=ReputationRead)
 def get_customer_reputation(
-    customer_id: int,
+    customer_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -97,7 +98,7 @@ def get_customer_reputation(
 
 @router.get("/{customer_id}/bookings", response_model=List[BookingListItem])
 def get_customer_bookings(
-    customer_id: int,
+    customer_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -110,7 +111,7 @@ def get_customer_bookings(
 
 @router.put("/{customer_id}", response_model=CustomerRead)
 def update_customer(
-    customer_id: int,
+    customer_id: UUID,
     payload: CustomerUpdate,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
@@ -123,7 +124,7 @@ def update_customer(
 
 @router.post("/{customer_id}/national-id-photo", response_model=CustomerRead)
 def upload_national_id_photo(
-    customer_id: int,
+    customer_id: UUID,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
@@ -136,7 +137,7 @@ def upload_national_id_photo(
 
 @router.delete("/{customer_id}", status_code=204)
 def delete_customer(
-    customer_id: int,
+    customer_id: UUID,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):

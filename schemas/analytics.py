@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -9,7 +10,7 @@ class WeekBucket(BaseModel):
 
 
 class TopCategory(BaseModel):
-    category_id: int
+    category_id: UUID
     name: str
     icon: Optional[str] = None
     count: int

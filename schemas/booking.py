@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from typing import List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -9,13 +10,13 @@ from schemas.customer import CustomerCreate, CustomerRead
 
 
 class BookingItemLineIn(BaseModel):
-    category_id: int
+    category_id: UUID
     unit_price: int = Field(ge=0)
     description: Optional[str] = None
 
 
 class BookingCreate(BaseModel):
-    customer_id: Optional[int] = None
+    customer_id: Optional[UUID] = None
     new_customer: Optional[CustomerCreate] = None
     event_date: Optional[date] = None
     pickup_date: date
@@ -46,22 +47,15 @@ class ReturnRequest(BaseModel):
 class BookingItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_item_id: int
-    category_id: int
+    booking_item_id: UUID
+    category_id: UUID
     unit_price: int
     description: Optional[str] = None
     condition: ItemCondition
 
 
-class BookingPhotoRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    photo_id: int
-    image_url: str
-
-
 class ItemSummary(BaseModel):
-    category_id: int
+    category_id: UUID
     category_name: str
     icon: Optional[str] = None
     quantity: int
@@ -70,7 +64,7 @@ class ItemSummary(BaseModel):
 class BookingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_id: int
+    booking_id: UUID
     customer: CustomerRead
     event_date: Optional[date] = None
     pickup_date: date
@@ -80,14 +74,14 @@ class BookingRead(BaseModel):
     status: BookingStatus
     lines: List[BookingItemRead]
     items: List[ItemSummary]
-    photos: List[BookingPhotoRead]
+    photos: List[str]
     created_at: datetime
 
 
 class BookingListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_id: int
+    booking_id: UUID
     customer: CustomerRead
     event_date: Optional[date] = None
     pickup_date: date

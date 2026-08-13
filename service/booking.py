@@ -13,7 +13,6 @@ import service.notification as notification_service
 from models import (
     Booking,
     BookingItem,
-    BookingPhoto,
     BookingStatus,
     Customer,
     ItemCondition,
@@ -58,7 +57,7 @@ def to_booking_dict(booking: Booking) -> dict:
         "status": booking.status,
         "lines": booking.items,
         "items": _grouped_items(booking),
-        "photos": booking.photos,
+        "photos": booking.photo_urls or [],
         "created_at": booking.created_at,
     }
 
@@ -177,13 +176,15 @@ def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Bookin
     return booking
 
 
-def add_photos(db: Session, booking_id: int, files: List[UploadFile]) -> Optional[Booking]:
+def add_photos(db: Session, booking_id: UUID, files: List[UploadFile]) -> Optional[Booking]:
     booking = get_booking(db, booking_id, refresh=False)
     if booking is None:
         return None
-    for file in files:
-        url = save_booking_photo(booking_id, file)
-        db.add(BookingPhoto(booking_id=booking_id, image_url=url))
+    new_urls = [save_booking_photo(booking_id, file) for file in files]
+    # Reassign (rather than .extend/.append) so SQLAlchemy's change
+    # detection sees a new list on the ARRAY column — mutating the list
+    # in place wouldn't be flagged as dirty.
+    booking.photo_urls = [*(booking.photo_urls or []), *new_urls]
     db.commit()
     db.refresh(booking)
     return booking
@@ -224,7 +225,7 @@ def list_bookings(
     return bookings, total
 
 
-def get_booking(db: Session, booking_id: int, refresh: bool = True) -> Optional[Booking]:
+def get_booking(db: Session, booking_id: UUID, refresh: bool = True) -> Optional[Booking]:
     if refresh:
         refresh_all_statuses(db)
     booking = db.get(Booking, booking_id)
@@ -233,7 +234,7 @@ def get_booking(db: Session, booking_id: int, refresh: bool = True) -> Optional[
     return booking
 
 
-def process_return(db: Session, booking_id: int, payload: ReturnRequest, user_id: UUID) -> Optional[Booking]:
+def process_return(db: Session, booking_id: UUID, payload: ReturnRequest, user_id: UUID) -> Optional[Booking]:
     booking = get_booking(db, booking_id, refresh=False)
     if booking is None:
         return None

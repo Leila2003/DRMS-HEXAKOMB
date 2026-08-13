@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
@@ -10,14 +11,14 @@ from utils.time_utils import time_ago
 class NotificationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    notification_id: int
+    notification_id: UUID
     type: NotificationType
     group: NotificationGroup
     title: str
     body: str
     read: bool
-    booking_id: Optional[int] = None
-    category_id: Optional[int] = None
+    booking_id: Optional[UUID] = None
+    category_id: Optional[UUID] = None
     created_at: datetime
 
     @computed_field

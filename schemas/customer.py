@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,7 +23,7 @@ class CustomerUpdate(BaseModel):
 class CustomerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    customer_id: int
+    customer_id: UUID
     name: str
     contact: str
     nationalID_Photo: Optional[str] = None

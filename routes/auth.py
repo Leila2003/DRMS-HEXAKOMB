@@ -76,7 +76,7 @@ def update_staff_user(
     return user
 
 
-@router.delete("/users/{user_id}", response_model=UserRead, tags=ADMIN_ONLY)
+@router.patch("/users/{user_id}", response_model=UserRead, tags=ADMIN_ONLY)
 def deactivate_staff_user(
     user_id: UUID,
     db: Session = Depends(get_db),
@@ -86,3 +86,14 @@ def deactivate_staff_user(
     if user is None:
         raise HTTPException(status_code=404, detail="Staff user not found")
     return user
+
+
+@router.delete("/users/{user_id}", status_code=204, tags=ADMIN_ONLY)
+def delete_staff_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    deleted = auth_service.delete_staff_user(db, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Staff user not found")

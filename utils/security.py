@@ -19,13 +19,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-this-to-a-long-random-string-before
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-# Plain "Authorization: Bearer <token>" scheme rather than the OAuth2
-# password-grant flow — the Swagger "Authorize" dialog just takes a raw
-# token, matching how POST /auth/login actually issues one.
-# auto_error=False so a missing header falls through to get_current_user,
-# which raises 401 itself — otherwise HTTPBearer's default is a 403 for a
-# missing header vs. 401 for a bad/expired one, an inconsistency callers
-# would have to special-case.
+
 bearer_scheme = HTTPBearer(
     bearerFormat="JWT",
     description="Paste the access_token from POST /auth/login.",

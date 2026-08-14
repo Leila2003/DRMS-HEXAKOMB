@@ -27,6 +27,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+
     name: Optional[str] = None
     phone: Optional[str] = None
     password: Optional[str] = None
@@ -43,3 +44,5 @@ class UserRead(BaseModel):
     role: UserRole
     is_active: bool
     created_at: datetime
+
+    

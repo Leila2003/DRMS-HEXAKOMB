@@ -7,13 +7,11 @@ from models import User, UserRole
 from schemas.auth import UserCreate, UserUpdate
 from utils.security import hash_password, verify_password
 
-# The single admin account is created from code, not from env vars or a
-# signup endpoint. There is only ever one admin; every other account made
-# through the API (POST /auth/users) is forced to UserRole.STAFF.
-DEFAULT_ADMIN_NAME = "Leila Mugeni"
+
+DEFAULT_ADMIN_NAME = "Leila Ahadi Mugeni"
 DEFAULT_ADMIN_EMAIL = "leilamugeni@gmail.com"
 DEFAULT_ADMIN_PHONE = "0789139940"
-DEFAULT_ADMIN_PASSWORD = "Mugeni@123"
+DEFAULT_ADMIN_PASSWORD = "mugeni@123"
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
@@ -108,3 +106,14 @@ def deactivate_staff_user(db: Session, user_id) -> Optional[User]:
     db.commit()
     db.refresh(user)
     return user
+
+
+def delete_staff_user(db: Session, user_id) -> bool:
+    """Hard-deletes a staff account. Refuses to touch admins."""
+    user = get_user(db, user_id)
+    if user is None or user.role != UserRole.STAFF:
+        return False
+
+    db.delete(user)
+    db.commit()
+    return True

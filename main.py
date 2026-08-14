@@ -13,9 +13,7 @@ from utils.file_storage import UPLOAD_DIR
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Swagger groups endpoints by role rather than by resource. openapi_tags
-# pins the section order (Auth, then Admin, then Staff) regardless of route
-# registration order, and gives each section a one-line description.
+
 app = FastAPI(
     title="DRMS",
     openapi_tags=[
@@ -54,6 +52,6 @@ def seed_default_admin():
         db.close()
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+# @app.get("/health")
+# def health():
+#     return {"status": "ok"}

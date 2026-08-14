@@ -1,5 +1,4 @@
 from typing import List
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -53,7 +52,7 @@ def list_staff_users(
 
 @router.get("/users/{user_id}", response_model=UserRead, tags=ADMIN_ONLY)
 def get_staff_user(
-    user_id: UUID,
+    user_id: str,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -65,7 +64,7 @@ def get_staff_user(
 
 @router.put("/users/{user_id}", response_model=UserRead, tags=ADMIN_ONLY)
 def update_staff_user(
-    user_id: UUID,
+    user_id: str,
     payload: UserUpdate,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
@@ -78,7 +77,7 @@ def update_staff_user(
 
 @router.delete("/users/{user_id}", response_model=UserRead, tags=ADMIN_ONLY)
 def deactivate_staff_user(
-    user_id: UUID,
+    user_id: str,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):

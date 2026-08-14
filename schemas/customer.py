@@ -22,7 +22,7 @@ class CustomerUpdate(BaseModel):
 class CustomerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    customer_id: int
+    customer_id: str
     name: str
     contact: str
     nationalID_Photo: Optional[str] = None

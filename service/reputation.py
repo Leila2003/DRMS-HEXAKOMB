@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from models import Booking, BookingStatus, ItemCondition
 
 
-def get_reputation(db: Session, customer_id: int) -> dict:
+def get_reputation(db: Session, customer_id: str) -> dict:
     closed = (
         db.query(Booking)
         .filter(

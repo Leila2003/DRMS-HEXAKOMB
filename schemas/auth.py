@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -36,7 +35,7 @@ class UserUpdate(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    user_id: UUID
+    user_id: str
     name: str
     email: EmailStr
     phone: Optional[str] = None

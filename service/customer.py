@@ -43,7 +43,7 @@ def list_customers(
     return customers, total
 
 
-def get_customer_bookings(db: Session, customer_id: int) -> List[Booking]:
+def get_customer_bookings(db: Session, customer_id: str) -> List[Booking]:
     return (
         db.query(Booking)
         .filter(Booking.customer_id == customer_id, Booking.is_deleted.is_(False))
@@ -52,7 +52,7 @@ def get_customer_bookings(db: Session, customer_id: int) -> List[Booking]:
     )
 
 
-def get_customer(db: Session, customer_id: int) -> Optional[Customer]:
+def get_customer(db: Session, customer_id: str) -> Optional[Customer]:
     customer = db.get(Customer, customer_id)
     if customer is None or customer.deleted_at is not None:
         return None
@@ -68,7 +68,7 @@ def find_customer_by_contact(db: Session, contact: str) -> Optional[Customer]:
 
 
 def update_customer(
-    db: Session, customer_id: int, payload: CustomerUpdate
+    db: Session, customer_id: str, payload: CustomerUpdate
 ) -> Optional[Customer]:
     customer = get_customer(db, customer_id)
     if customer is None:
@@ -83,7 +83,7 @@ def update_customer(
 
 
 def upload_national_id_photo(
-    db: Session, customer_id: int, file: UploadFile
+    db: Session, customer_id: str, file: UploadFile
 ) -> Optional[Customer]:
     customer = get_customer(db, customer_id)
     if customer is None:
@@ -95,7 +95,7 @@ def upload_national_id_photo(
     return customer
 
 
-def delete_customer(db: Session, customer_id: int) -> bool:
+def delete_customer(db: Session, customer_id: str) -> bool:
     customer = get_customer(db, customer_id)
     if customer is None:
         return False

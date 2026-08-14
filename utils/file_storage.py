@@ -13,7 +13,7 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 
-def save_booking_photo(booking_id: int, file: UploadFile) -> str:
+def save_booking_photo(booking_id: str, file: UploadFile) -> str:
     extension = ALLOWED_IMAGE_TYPES.get(file.content_type)
     if extension is None:
         raise HTTPException(
@@ -31,7 +31,7 @@ def save_booking_photo(booking_id: int, file: UploadFile) -> str:
     return f"/uploads/bookings/{booking_id}/{destination.name}"
 
 
-def save_customer_national_id_photo(customer_id: int, file: UploadFile) -> str:
+def save_customer_national_id_photo(customer_id: str, file: UploadFile) -> str:
     extension = ALLOWED_IMAGE_TYPES.get(file.content_type)
     if extension is None:
         raise HTTPException(
@@ -50,7 +50,7 @@ def save_customer_national_id_photo(customer_id: int, file: UploadFile) -> str:
     return f"/uploads/customers/{customer_id}/national_id{extension}"
 
 
-def save_category_image(category_id: int, file: UploadFile) -> str:
+def save_category_image(category_id: str, file: UploadFile) -> str:
     extension = ALLOWED_IMAGE_TYPES.get(file.content_type)
     if extension is None:
         raise HTTPException(

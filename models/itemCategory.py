@@ -1,18 +1,21 @@
-from sqlalchemy import Column, Integer, String, Text
+import uuid
+from sqlalchemy import Column, CHAR, String, Text, Integer
 from sqlalchemy.orm import relationship
 
 from database.database import Base
-from models.timestamp import Timestamp
+from models.time_stamp import TimeStamp
 
 
-class ItemCategory(Timestamp, Base):
+class ItemCategory(TimeStamp, Base):
 
     __tablename__ = "items_category"
 
-    category_id = Column(Integer, primary_key=True, index=True)
+    category_id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     item_name = Column(String(150), unique=True, nullable=False)
     item_type = Column(String(100), nullable=True)
     image_url = Column(String(500), nullable=True)
+    icon = Column(String(10), nullable=True)
+    tile_color = Column(String(30), nullable=True)
     description = Column(Text, nullable=True)
     total_owned = Column(Integer, default=0, nullable=False)
     quantity_available = Column(Integer, default=0, nullable=False)

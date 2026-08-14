@@ -11,8 +11,8 @@ def create_notification(
     group: NotificationGroup,
     title: str,
     body: str,
-    booking_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    booking_id: Optional[str] = None,
+    category_id: Optional[str] = None,
 ) -> Notification:
     notification = Notification(
         type=type,
@@ -47,14 +47,14 @@ def list_notifications(db: Session) -> List[Notification]:
     )
 
 
-def get_notification(db: Session, notification_id: int) -> Optional[Notification]:
+def get_notification(db: Session, notification_id: str) -> Optional[Notification]:
     notification = db.get(Notification, notification_id)
     if notification is None or notification.is_deleted:
         return None
     return notification
 
 
-def mark_read(db: Session, notification_id: int) -> Optional[Notification]:
+def mark_read(db: Session, notification_id: str) -> Optional[Notification]:
     notification = get_notification(db, notification_id)
     if notification is None:
         return None

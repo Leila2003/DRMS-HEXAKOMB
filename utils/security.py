@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from uuid import UUID
 
 import bcrypt
 import jwt
@@ -41,7 +40,7 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def create_access_token(user_id: UUID, expires_minutes: Optional[int] = None) -> str:
+def create_access_token(user_id: str, expires_minutes: Optional[int] = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=expires_minutes if expires_minutes is not None else ACCESS_TOKEN_EXPIRE_MINUTES
     )

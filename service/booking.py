@@ -1,7 +1,6 @@
 from collections import Counter, OrderedDict
 from datetime import date, datetime, timezone
 from typing import List, Optional, Tuple
-from uuid import UUID
 
 from fastapi import UploadFile
 from sqlalchemy import or_
@@ -31,7 +30,7 @@ class BookingError(Exception):
 
 
 def _grouped_items(booking: Booking) -> List[dict]:
-    grouped: "OrderedDict[int, dict]" = OrderedDict()
+    grouped: "OrderedDict[str, dict]" = OrderedDict()
     for item in booking.items:
         entry = grouped.setdefault(
             item.category_id,
@@ -121,7 +120,7 @@ def refresh_all_statuses(db: Session) -> None:
     db.commit()
 
 
-def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Booking:
+def create_booking(db: Session, payload: BookingCreate, user_id: str) -> Booking:
     if payload.customer_id is not None:
         customer = customer_service.get_customer(db, payload.customer_id)
         if customer is None:
@@ -177,7 +176,7 @@ def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Bookin
     return booking
 
 
-def add_photos(db: Session, booking_id: int, files: List[UploadFile]) -> Optional[Booking]:
+def add_photos(db: Session, booking_id: str, files: List[UploadFile]) -> Optional[Booking]:
     booking = get_booking(db, booking_id, refresh=False)
     if booking is None:
         return None
@@ -224,7 +223,7 @@ def list_bookings(
     return bookings, total
 
 
-def get_booking(db: Session, booking_id: int, refresh: bool = True) -> Optional[Booking]:
+def get_booking(db: Session, booking_id: str, refresh: bool = True) -> Optional[Booking]:
     if refresh:
         refresh_all_statuses(db)
     booking = db.get(Booking, booking_id)
@@ -233,7 +232,7 @@ def get_booking(db: Session, booking_id: int, refresh: bool = True) -> Optional[
     return booking
 
 
-def process_return(db: Session, booking_id: int, payload: ReturnRequest, user_id: UUID) -> Optional[Booking]:
+def process_return(db: Session, booking_id: str, payload: ReturnRequest, user_id: str) -> Optional[Booking]:
     booking = get_booking(db, booking_id, refresh=False)
     if booking is None:
         return None

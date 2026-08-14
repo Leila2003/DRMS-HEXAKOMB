@@ -1,17 +1,18 @@
-from sqlalchemy import Column, Integer, String
+import uuid
+from sqlalchemy import Column, CHAR, String
 from sqlalchemy.orm import relationship
 
 from database.database import Base
-from models.timestamp import Timestamp
+from models.time_stamp import TimeStamp
 
 
-class Customer(Timestamp, Base):
+class Customer(TimeStamp, Base):
 
 
     __tablename__ = "customers"
     
 
-    customer_id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(150), nullable=False)
     nationalID_Photo = Column("national_id_photo", String(500), nullable=True)
     contact = Column(String(30), unique=True, index=True, nullable=False)

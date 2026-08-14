@@ -51,7 +51,7 @@ def list_categories(
 
 @router.get("/{category_id}", response_model=CategoryRead)
 def get_category(
-    category_id: int,
+    category_id: str,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -63,7 +63,7 @@ def get_category(
 
 @router.post("/{category_id}/image", response_model=CategoryRead)
 def upload_category_image(
-    category_id: int,
+    category_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
@@ -76,7 +76,7 @@ def upload_category_image(
 
 @router.put("/{category_id}", response_model=CategoryRead)
 def update_category(
-    category_id: int,
+    category_id: str,
     payload: CategoryUpdate,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
@@ -89,7 +89,7 @@ def update_category(
 
 @router.delete("/{category_id}", status_code=204)
 def delete_category(
-    category_id: int,
+    category_id: str,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):

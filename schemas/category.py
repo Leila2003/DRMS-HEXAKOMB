@@ -25,10 +25,12 @@ class CategoryUpdate(BaseModel):
 class CategoryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    category_id: int
+    category_id: str
     item_name: str
     item_type: Optional[str] = None
     image_url: Optional[str] = None
+    icon: Optional[str] = None
+    tile_color: Optional[str] = None
     description: Optional[str] = None
     total_owned: int
     quantity_available: int

@@ -19,7 +19,7 @@ def list_notifications(db: Session = Depends(get_db), _user: User = Depends(get_
 
 @router.post("/{notification_id}/read", response_model=NotificationRead)
 def mark_notification_read(
-    notification_id: int,
+    notification_id: str,
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):

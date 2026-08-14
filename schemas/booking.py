@@ -9,13 +9,13 @@ from schemas.customer import CustomerCreate, CustomerRead
 
 
 class BookingItemLineIn(BaseModel):
-    category_id: int
+    category_id: str
     unit_price: int = Field(ge=0)
     description: Optional[str] = None
 
 
 class BookingCreate(BaseModel):
-    customer_id: Optional[int] = None
+    customer_id: Optional[str] = None
     new_customer: Optional[CustomerCreate] = None
     event_date: Optional[date] = None
     pickup_date: date
@@ -46,8 +46,8 @@ class ReturnRequest(BaseModel):
 class BookingItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_item_id: int
-    category_id: int
+    booking_item_id: str
+    category_id: str
     unit_price: int
     description: Optional[str] = None
     condition: ItemCondition
@@ -56,12 +56,12 @@ class BookingItemRead(BaseModel):
 class BookingPhotoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    photo_id: int
+    photo_id: str
     image_url: str
 
 
 class ItemSummary(BaseModel):
-    category_id: int
+    category_id: str
     category_name: str
     icon: Optional[str] = None
     quantity: int
@@ -70,7 +70,7 @@ class ItemSummary(BaseModel):
 class BookingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_id: int
+    booking_id: str
     customer: CustomerRead
     event_date: Optional[date] = None
     pickup_date: date
@@ -87,7 +87,7 @@ class BookingRead(BaseModel):
 class BookingListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    booking_id: int
+    booking_id: str
     customer: CustomerRead
     event_date: Optional[date] = None
     pickup_date: date

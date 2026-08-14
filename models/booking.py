@@ -1,11 +1,10 @@
 import enum
-
-from sqlalchemy import Column, Date, Enum, ForeignKey, Integer
-from sqlalchemy.dialects.postgresql import UUID
+import uuid
+from sqlalchemy import CHAR, Column, Date, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 from database.database import Base
-from models.timestamp import Timestamp
+from models.time_stamp import TimeStamp
 
 
 class BookingStatus(str, enum.Enum):
@@ -16,13 +15,13 @@ class BookingStatus(str, enum.Enum):
     DAMAGED = "damaged"
 
 
-class Booking(Timestamp, Base):
+class Booking(TimeStamp, Base):
    
     __tablename__ = "bookings"
 
-    booking_id = Column(Integer, primary_key=True, index=True)
-    customer_id = Column(Integer, ForeignKey("customers.customer_id"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
+    booking_id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    customer_id = Column(CHAR(36), ForeignKey("customers.customer_id"), nullable=False, index=True)
+    user_id = Column(CHAR(36), ForeignKey("users.user_id"), nullable=False, index=True)
 
     pickup_date = Column(Date, nullable=False)
     event_date = Column(Date, nullable=True)

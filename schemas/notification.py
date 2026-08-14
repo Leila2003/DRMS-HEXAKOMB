@@ -10,14 +10,14 @@ from utils.time_utils import time_ago
 class NotificationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    notification_id: int
+    notification_id: str
     type: NotificationType
     group: NotificationGroup
     title: str
     body: str
     read: bool
-    booking_id: Optional[int] = None
-    category_id: Optional[int] = None
+    booking_id: Optional[str] = None
+    category_id: Optional[str] = None
     created_at: datetime
 
     @computed_field

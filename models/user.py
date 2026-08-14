@@ -1,11 +1,10 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Enum, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, Column, Enum, String
 
 from database.database import Base
-from models.timestamp import Timestamp
+from models.time_stamp import TimeStamp
 
 
 class UserRole(str, enum.Enum):
@@ -13,12 +12,12 @@ class UserRole(str, enum.Enum):
     STAFF = "staff"
 
 
-class User(Timestamp, Base):
+class User(TimeStamp, Base):
 
 
     __tablename__ = "users"
 
-    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     name = Column(String(150), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     phone = Column(String(20), nullable=True)

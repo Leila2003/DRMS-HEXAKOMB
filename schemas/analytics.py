@@ -9,7 +9,7 @@ class WeekBucket(BaseModel):
 
 
 class TopCategory(BaseModel):
-    category_id: int
+    category_id: str
     name: str
     icon: Optional[str] = None
     count: int

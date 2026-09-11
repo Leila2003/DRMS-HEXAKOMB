@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from models.booking import BookingStatus
 from models.booking_item import ItemCondition
@@ -11,8 +11,8 @@ from schemas.customer import CustomerCreate, CustomerRead
 
 class BookingItemLineIn(BaseModel):
     category_id: UUID
-    unit_price: int = Field(ge=0)
-    description: Optional[str] = None
+    quantity: int = Field(default=1, ge=1)
+    unit_price: int = Field(ge=0)  # price for this category, per unit
 
 
 class BookingCreate(BaseModel):
@@ -21,7 +21,7 @@ class BookingCreate(BaseModel):
     event_date: Optional[date] = None
     pickup_date: date
     return_date: date
-    caution: int = Field(default=0, ge=0)
+    caution: int = Field(default=0, ge=0)  # single deposit for the whole booking
     items: List[BookingItemLineIn] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -49,9 +49,15 @@ class BookingItemRead(BaseModel):
 
     booking_item_id: UUID
     category_id: UUID
+    quantity: int
     unit_price: int
     description: Optional[str] = None
     condition: ItemCondition
+
+    @computed_field
+    @property
+    def line_total(self) -> int:
+        return self.unit_price * self.quantity
 
 
 class ItemSummary(BaseModel):
@@ -59,6 +65,7 @@ class ItemSummary(BaseModel):
     category_name: str
     icon: Optional[str] = None
     quantity: int
+    subtotal: int  # unit_price * quantity summed across this category's lines
 
 
 class BookingRead(BaseModel):
@@ -69,12 +76,12 @@ class BookingRead(BaseModel):
     event_date: Optional[date] = None
     pickup_date: date
     return_date: date
-    price: int
-    caution: int
+    price: int  # rental total across all categories
+    caution: int  # deposit for the whole booking
+    total_amount: int  # price + caution
     status: BookingStatus
     lines: List[BookingItemRead]
     items: List[ItemSummary]
-    photos: List[str]
     created_at: datetime
 
 
@@ -86,8 +93,9 @@ class BookingListItem(BaseModel):
     event_date: Optional[date] = None
     pickup_date: date
     return_date: date
-    price: int
-    caution: int
+    price: int  # rental total across all categories
+    caution: int  # deposit for the whole booking
+    total_amount: int  # price + caution
     status: BookingStatus
     items: List[ItemSummary]
 

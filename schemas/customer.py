@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class CustomerCreate(BaseModel):
@@ -42,9 +42,5 @@ class CustomerPage(BaseModel):
 
 
 class ReputationRead(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    cls: str = Field(alias="class")
-    icon: str
     label: str
     detail: str

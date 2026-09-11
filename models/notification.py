@@ -27,6 +27,9 @@ class Notification(Timestamp, Base):
     __tablename__ = "notifications"
 
     notification_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    business_id = Column(
+        UUID(as_uuid=True), ForeignKey("businesses.business_id"), nullable=False, index=True
+    )
     type = Column(Enum(NotificationType), nullable=False)
     group = Column(Enum(NotificationGroup), nullable=False)
     title = Column(String(200), nullable=False)

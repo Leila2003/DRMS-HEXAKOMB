@@ -1,21 +1,21 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Enum, String
+from sqlalchemy import Column, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from database.database import Base
 from models.timestamp import Timestamp
 
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    STAFF = "staff"
+    SUPER_ADMIN = "super_admin"      
+    BUSINESS_ADMIN = "business_admin" 
+    STAFF = "staff"                    
 
 
 class User(Timestamp, Base):
-
-
     __tablename__ = "users"
 
     user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
@@ -25,9 +25,14 @@ class User(Timestamp, Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.STAFF, nullable=False)
 
+   
+    business_id = Column(
+        UUID(as_uuid=True), ForeignKey("businesses.business_id"), nullable=True, index=True
+    )
+    business = relationship("Business", backref="users")
+
     @property
     def is_active(self) -> bool:
-        """Inverse of the soft-delete flag, exposed for API responses."""
         return not self.is_deleted
 
     def __repr__(self) -> str:

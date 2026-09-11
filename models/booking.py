@@ -1,8 +1,8 @@
 import enum
 import uuid
 
-from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, String, text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy import Column, Date, Enum, ForeignKey, Integer
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from database.database import Base
@@ -22,6 +22,9 @@ class Booking(Timestamp, Base):
     __tablename__ = "bookings"
 
     booking_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    business_id = Column(
+        UUID(as_uuid=True), ForeignKey("businesses.business_id"), nullable=False, index=True
+    )
     customer_id = Column(UUID(as_uuid=True), ForeignKey("customers.customer_id"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False, index=True)
 
@@ -32,9 +35,6 @@ class Booking(Timestamp, Base):
     price = Column(Integer, default=0, nullable=False)
     caution = Column(Integer, default=0, nullable=False)
     status = Column(Enum(BookingStatus), default=BookingStatus.ACTIVE, nullable=False, index=True)
-
-
-    photo_urls = Column(ARRAY(String(500)), default=list, server_default=text("'{}'"), nullable=False)
 
     customer = relationship("Customer", back_populates="bookings")
     user = relationship("User")

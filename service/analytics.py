@@ -10,27 +10,35 @@ CLOSED_STATUSES = [BookingStatus.RETURNED, BookingStatus.DAMAGED]
 OPEN_STATUSES = [BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE]
 
 
-def get_summary(db: Session) -> dict:
+def get_summary(db: Session, business_id) -> dict:
     today = date.today()
     month_start = today.replace(day=1)
 
     bookings_this_month = (
         db.query(Booking)
-        .filter(Booking.pickup_date >= month_start, Booking.is_deleted.is_(False))
+        .filter(
+            Booking.business_id == business_id,
+            Booking.pickup_date >= month_start,
+            Booking.is_deleted.is_(False),
+        )
         .all()
     )
     revenue = sum(b.price for b in bookings_this_month)
 
     active_rentals = (
         db.query(Booking)
-        .filter(Booking.status.in_(OPEN_STATUSES), Booking.is_deleted.is_(False))
+        .filter(
+            Booking.business_id == business_id,
+            Booking.status.in_(OPEN_STATUSES),
+            Booking.is_deleted.is_(False),
+        )
         .count()
     )
 
     rows = (
         db.query(BookingItem.category_id, func.count(BookingItem.booking_item_id).label("cnt"))
         .join(Booking)
-        .filter(Booking.is_deleted.is_(False))
+        .filter(Booking.business_id == business_id, Booking.is_deleted.is_(False))
         .group_by(BookingItem.category_id)
         .order_by(func.count(BookingItem.booking_item_id).desc())
         .limit(5)
@@ -47,11 +55,24 @@ def get_summary(db: Session) -> dict:
     thirty_days_ago = today - timedelta(days=30)
     closed = (
         db.query(Booking)
-        .filter(Booking.status.in_(CLOSED_STATUSES), Booking.return_date >= thirty_days_ago, Booking.is_deleted.is_(False))
+        .filter(
+            Booking.business_id == business_id,
+            Booking.status.in_(CLOSED_STATUSES),
+            Booking.return_date >= thirty_days_ago,
+            Booking.is_deleted.is_(False),
+        )
         .all()
     )
     if not closed:
-        closed = db.query(Booking).filter(Booking.status.in_(CLOSED_STATUSES), Booking.is_deleted.is_(False)).all()
+        closed = (
+            db.query(Booking)
+            .filter(
+                Booking.business_id == business_id,
+                Booking.status.in_(CLOSED_STATUSES),
+                Booking.is_deleted.is_(False),
+            )
+            .all()
+        )
     avg_duration = (
         sum((b.return_date - b.pickup_date).days for b in closed) / len(closed) if closed else 0.0
     )

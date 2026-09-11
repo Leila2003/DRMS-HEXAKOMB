@@ -1,10 +1,8 @@
 from collections import Counter, OrderedDict
 from datetime import date, datetime, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import UploadFile
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import service.category as category_service
@@ -14,13 +12,11 @@ from models import (
     Booking,
     BookingItem,
     BookingStatus,
-    Customer,
     ItemCondition,
     NotificationGroup,
     NotificationType,
 )
 from schemas.booking import BookingCreate, ReturnRequest
-from utils.file_storage import save_booking_photo
 
 DUE_SOON_DAYS = 2
 
@@ -39,9 +35,11 @@ def _grouped_items(booking: Booking) -> List[dict]:
                 "category_name": item.category.item_name,
                 "icon": item.category.icon,
                 "quantity": 0,
+                "subtotal": 0,
             },
         )
-        entry["quantity"] += 1
+        entry["quantity"] += item.quantity
+        entry["subtotal"] += item.unit_price * item.quantity
     return list(grouped.values())
 
 
@@ -54,10 +52,10 @@ def to_booking_dict(booking: Booking) -> dict:
         "return_date": booking.return_date,
         "price": booking.price,
         "caution": booking.caution,
+        "total_amount": booking.price + booking.caution,
         "status": booking.status,
         "lines": booking.items,
         "items": _grouped_items(booking),
-        "photos": booking.photo_urls or [],
         "created_at": booking.created_at,
     }
 
@@ -71,16 +69,18 @@ def to_booking_list_dict(booking: Booking) -> dict:
         "return_date": booking.return_date,
         "price": booking.price,
         "caution": booking.caution,
+        "total_amount": booking.price + booking.caution,
         "status": booking.status,
         "items": _grouped_items(booking),
     }
 
 
-def refresh_all_statuses(db: Session) -> None:
+def refresh_all_statuses(db: Session, business_id: UUID) -> None:
     today = date.today()
     open_bookings = (
         db.query(Booking)
         .filter(
+            Booking.business_id == business_id,
             Booking.status.in_([BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE]),
             Booking.is_deleted.is_(False),
         )
@@ -102,6 +102,7 @@ def refresh_all_statuses(db: Session) -> None:
         if new_status == BookingStatus.DUE:
             notification_service.create_notification(
                 db,
+                business_id=business_id,
                 type=NotificationType.WARN,
                 group=NotificationGroup.UPCOMING_RETURNS,
                 title="Return due soon" if days_left > 0 else "Return due today",
@@ -111,6 +112,7 @@ def refresh_all_statuses(db: Session) -> None:
         elif new_status == BookingStatus.OVERDUE:
             notification_service.create_notification(
                 db,
+                business_id=business_id,
                 type=NotificationType.ALERT,
                 group=NotificationGroup.OVERDUE,
                 title="Rental overdue",
@@ -120,28 +122,39 @@ def refresh_all_statuses(db: Session) -> None:
     db.commit()
 
 
-def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Booking:
+def create_booking(db: Session, payload: BookingCreate, user_id: UUID, business_id: UUID) -> Booking:
     if payload.customer_id is not None:
-        customer = customer_service.get_customer(db, payload.customer_id)
+        customer = customer_service.get_customer(db, payload.customer_id, business_id)
         if customer is None:
             raise BookingError("Customer not found")
     else:
-        existing = customer_service.find_customer_by_contact(db, payload.new_customer.contact)
-        customer = existing or customer_service.create_customer(db, payload.new_customer)
+        existing = customer_service.find_customer_by_contact(db, payload.new_customer.contact, business_id)
+        if existing is not None:
+            customer = existing
+        else:
+            try:
+                customer = customer_service.create_customer(db, payload.new_customer, business_id)
+            except ValueError as exc:
+                raise BookingError(str(exc)) from exc
 
-    counts = Counter(line.category_id for line in payload.items)
+    counts: Counter = Counter()
+    for line in payload.items:
+        counts[line.category_id] += line.quantity
     categories = {}
     for category_id, qty in counts.items():
-        category = category_service.get_category(db, category_id)
+        category = category_service.get_category(db, category_id, business_id)
         if category is None:
             raise BookingError(f"Category {category_id} not found")
         if qty > category.quantity_available:
             raise BookingError(f"Only {category.quantity_available} available in {category.item_name}")
         categories[category_id] = category
+        
+        # total Price
 
-    total_price = sum(line.unit_price for line in payload.items)
+    total_price = sum(line.unit_price * line.quantity for line in payload.items)
 
     booking = Booking(
+        business_id=business_id,
         customer_id=customer.customer_id,
         user_id=user_id,
         pickup_date=payload.pickup_date,
@@ -159,9 +172,8 @@ def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Bookin
             BookingItem(
                 booking_id=booking.booking_id,
                 category_id=line.category_id,
-                quantity=1,
+                quantity=line.quantity,
                 unit_price=line.unit_price,
-                description=line.description,
             )
         )
 
@@ -176,66 +188,30 @@ def create_booking(db: Session, payload: BookingCreate, user_id: UUID) -> Bookin
     return booking
 
 
-def add_photos(db: Session, booking_id: UUID, files: List[UploadFile]) -> Optional[Booking]:
-    booking = get_booking(db, booking_id, refresh=False)
-    if booking is None:
-        return None
-    new_urls = [save_booking_photo(booking_id, file) for file in files]
-    # Reassign (rather than .extend/.append) so SQLAlchemy's change
-    # detection sees a new list on the ARRAY column — mutating the list
-    # in place wouldn't be flagged as dirty.
-    booking.photo_urls = [*(booking.photo_urls or []), *new_urls]
-    db.commit()
-    db.refresh(booking)
-    return booking
+def list_bookings(db: Session, business_id: UUID) -> List[Booking]:
+    refresh_all_statuses(db, business_id)
 
-
-def list_bookings(
-    db: Session,
-    status_filter: Optional[str] = None,
-    search: Optional[str] = None,
-    page: int = 1,
-    page_size: int = 10,
-) -> Tuple[List[Booking], int]:
-    refresh_all_statuses(db)
-
-    query = db.query(Booking).join(Customer).filter(Booking.is_deleted.is_(False))
-
-    if status_filter and status_filter != "all":
-        if status_filter == "returned":
-            query = query.filter(Booking.status.in_([BookingStatus.RETURNED, BookingStatus.DAMAGED]))
-        else:
-            query = query.filter(Booking.status == BookingStatus(status_filter))
-
-    if search:
-        like = f"%{search}%"
-        digits = "".join(ch for ch in search if ch.isdigit())
-        conditions = [Customer.name.ilike(like)]
-        if digits:
-            conditions.append(Customer.contact.ilike(f"%{digits}%"))
-        query = query.filter(or_(*conditions))
-
-    total = query.count()
-    bookings = (
-        query.order_by(Booking.pickup_date.desc(), Booking.booking_id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+    return (
+        db.query(Booking)
+        .filter(Booking.business_id == business_id, Booking.is_deleted.is_(False))
+        .order_by(Booking.pickup_date.desc(), Booking.booking_id.desc())
         .all()
     )
-    return bookings, total
 
 
-def get_booking(db: Session, booking_id: UUID, refresh: bool = True) -> Optional[Booking]:
+def get_booking(db: Session, booking_id: UUID, business_id: UUID, refresh: bool = True) -> Optional[Booking]:
     if refresh:
-        refresh_all_statuses(db)
+        refresh_all_statuses(db, business_id)
     booking = db.get(Booking, booking_id)
-    if booking is None or booking.is_deleted:
+    if booking is None or booking.is_deleted or booking.business_id != business_id:
         return None
     return booking
 
 
-def process_return(db: Session, booking_id: UUID, payload: ReturnRequest, user_id: UUID) -> Optional[Booking]:
-    booking = get_booking(db, booking_id, refresh=False)
+def process_return(
+    db: Session, booking_id: UUID, business_id: UUID, payload: ReturnRequest, user_id: UUID
+) -> Optional[Booking]:
+    booking = get_booking(db, booking_id, business_id, refresh=False)
     if booking is None:
         return None
     if booking.status in (BookingStatus.RETURNED, BookingStatus.DAMAGED):
@@ -248,20 +224,23 @@ def process_return(db: Session, booking_id: UUID, payload: ReturnRequest, user_i
         item.returned_at = now
         item.returned_by_id = user_id
 
-    counts = Counter(item.category_id for item in booking.items)
+    counts: Counter = Counter()
+    for item in booking.items:
+        counts[item.category_id] += item.quantity
 
     if payload.condition == ItemCondition.GOOD:
         booking.status = BookingStatus.RETURNED
         for category_id, qty in counts.items():
-            category = category_service.get_category(db, category_id)
+            category = category_service.get_category(db, category_id, business_id)
             category_service.adjust_rented(category, -qty)
     else:
         booking.status = BookingStatus.DAMAGED
         for category_id, qty in counts.items():
-            category = category_service.get_category(db, category_id)
+            category = category_service.get_category(db, category_id, business_id)
             category_service.write_off(category, qty)
         notification_service.create_notification(
             db,
+            business_id=business_id,
             type=NotificationType.INFO,
             group=NotificationGroup.INVENTORY,
             title=f"Item flagged {payload.condition.value}",

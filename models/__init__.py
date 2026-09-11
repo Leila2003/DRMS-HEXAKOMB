@@ -1,6 +1,7 @@
 
 from models.booking import Booking, BookingStatus
 from models.booking_item import BookingItem, ItemCondition
+from models.business import Business
 from models.customer import Customer
 from models.itemCategory import ItemCategory
 from models.notification import Notification, NotificationGroup, NotificationType
@@ -17,5 +18,6 @@ __all__ = [
     "NotificationGroup",
     "NotificationType",
     "User",
+    "Business",
     "UserRole",
 ]

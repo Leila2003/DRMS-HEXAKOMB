@@ -6,7 +6,7 @@ from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models import Booking, Customer
+from models import Booking, BookingStatus, Customer
 from schemas.customer import CustomerCreate, CustomerUpdate
 from utils.file_storage import save_customer_national_id_photo
 
@@ -74,7 +74,11 @@ def update_customer(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(customer, field, value)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ValueError("A customer with this contact already exists") from exc
     db.refresh(customer)
     return customer
 
@@ -96,6 +100,19 @@ def delete_customer(db: Session, customer_id: UUID, business_id: UUID) -> bool:
     customer = get_customer(db, customer_id, business_id)
     if customer is None:
         return False
+
+    open_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.customer_id == customer_id,
+            Booking.business_id == business_id,
+            Booking.is_deleted.is_(False),
+            Booking.status.in_([BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE]),
+        )
+        .count()
+    )
+    if open_bookings:
+        raise ValueError("This customer has open bookings; process their returns before deleting")
 
     customer.is_deleted = True
     customer.deleted_at = datetime.now(timezone.utc)

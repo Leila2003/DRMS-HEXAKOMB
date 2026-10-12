@@ -61,17 +61,17 @@ def get_category(
     return category
 
 
-# @router.post("/{category_id}/image", response_model=CategoryRead)
-# def upload_category_image(
-#     category_id: UUID,
-#     file: UploadFile = File(...),
-#     db: Session = Depends(get_db),
-#     _user: User = Depends(get_current_user),
-# ):
-#     category = category_service.upload_category_image(db, category_id, file)
-#     if category is None:
-#         raise HTTPException(status_code=404, detail="Category not found")
-#     return category
+@router.post("/{category_id}/image", response_model=CategoryRead)
+def upload_category_image(
+    category_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_business_member),
+):
+    category = category_service.upload_category_image(db, category_id, current_user.business_id, file)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return category
 
 
 @router.put("/{category_id}", response_model=CategoryRead)

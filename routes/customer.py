@@ -16,7 +16,7 @@ from schemas.customer import (
     CustomerUpdate,
     ReputationRead,
 )
-from utils.security import require_business_member
+from utils.security import require_business_admin, require_business_member
 
 router = APIRouter(prefix="/customers", tags=["Business Admin", "Staff"])
 
@@ -110,9 +110,12 @@ def update_customer(
     customer_id: UUID,
     payload: CustomerUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_business_member),
+    current_user: User = Depends(require_business_admin),
 ):
-    customer = customer_service.update_customer(db, customer_id, current_user.business_id, payload)
+    try:
+        customer = customer_service.update_customer(db, customer_id, current_user.business_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
@@ -135,8 +138,11 @@ def update_customer(
 def delete_customer(
     customer_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_business_member),
+    current_user: User = Depends(require_business_admin),
 ):
-    deleted = customer_service.delete_customer(db, customer_id, current_user.business_id)
+    try:
+        deleted = customer_service.delete_customer(db, customer_id, current_user.business_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if not deleted:
         raise HTTPException(status_code=404, detail="Customer not found")

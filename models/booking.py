@@ -1,6 +1,5 @@
 import enum
 import uuid
-
 from sqlalchemy import Column, Date, Enum, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -15,6 +14,11 @@ class BookingStatus(str, enum.Enum):
     OVERDUE = "overdue"
     RETURNED = "returned"
     DAMAGED = "damaged"
+
+
+class CautionOutcome(str, enum.Enum):
+    REFUNDED = "refunded"  # deposit given back to the customer
+    KEPT = "kept"  # deposit retained by the business
 
 
 class Booking(Timestamp, Base):
@@ -34,6 +38,8 @@ class Booking(Timestamp, Base):
 
     price = Column(Integer, default=0, nullable=False)
     caution = Column(Integer, default=0, nullable=False)
+    # NULL while the booking is open (caution still held); set at return.
+    caution_outcome = Column(Enum(CautionOutcome, native_enum=False, length=10), nullable=True)
     status = Column(Enum(BookingStatus), default=BookingStatus.ACTIVE, nullable=False, index=True)
 
     customer = relationship("Customer", back_populates="bookings")

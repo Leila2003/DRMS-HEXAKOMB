@@ -35,5 +35,9 @@ class User(Timestamp, Base):
     def is_active(self) -> bool:
         return not self.is_deleted
 
+    @property
+    def business_name(self):
+        return self.business.name if self.business is not None else None
+
     def __repr__(self) -> str:
         return f"<User user_id={self.user_id} name={self.name!r} role={self.role}>"

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
-from models.booking import BookingStatus
+from models.booking import BookingStatus, CautionOutcome
 from models.booking_item import ItemCondition
 from schemas.customer import CustomerCreate, CustomerRead
 
@@ -33,9 +33,25 @@ class BookingCreate(BaseModel):
         return self
 
 
+class BookingItemLineUpdate(BaseModel):
+    booking_item_id: UUID
+    quantity: int = Field(ge=1)
+    unit_price: int = Field(ge=0)
+
+
+class BookingUpdate(BaseModel):
+    event_date: Optional[date] = None
+    pickup_date: Optional[date] = None
+    return_date: Optional[date] = None
+    caution: Optional[int] = Field(default=None, ge=0)
+    lines: Optional[List[BookingItemLineUpdate]] = None
+
+
 class ReturnRequest(BaseModel):
     condition: ItemCondition
     notes: Optional[str] = None
+    # Required when the booking has a caution: refund it or keep it.
+    caution_outcome: Optional[CautionOutcome] = None
 
     @model_validator(mode="after")
     def check_condition(self) -> "ReturnRequest":
@@ -79,6 +95,7 @@ class BookingRead(BaseModel):
     price: int  # rental total across all categories
     caution: int  # deposit for the whole booking
     total_amount: int  # price + caution
+    caution_outcome: Optional[CautionOutcome] = None
     status: BookingStatus
     lines: List[BookingItemRead]
     items: List[ItemSummary]
@@ -96,6 +113,7 @@ class BookingListItem(BaseModel):
     price: int  # rental total across all categories
     caution: int  # deposit for the whole booking
     total_amount: int  # price + caution
+    caution_outcome: Optional[CautionOutcome] = None
     status: BookingStatus
     items: List[ItemSummary]
 

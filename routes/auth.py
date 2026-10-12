@@ -41,9 +41,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     return Token(access_token=create_access_token(user.user_id))
 
 
-# @router.get("/me", response_model=UserRead, tags=AUTH_ONLY)
-# def me(current_user: User = Depends(get_current_user)):
-#     return current_user
+@router.get("/me", response_model=UserRead, tags=AUTH_ONLY)
+def me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
 @router.post("/users", response_model=UserRead, status_code=201, tags=BUSINESS_ADMIN_ONLY)
@@ -64,6 +64,7 @@ def list_staff_users(
     admin: User = Depends(require_business_admin),
 ):
     return auth_service.list_staff_users(db, business_id=admin.business_id)
+
 
 
 @router.get("/users/{user_id}", response_model=UserRead, tags=BUSINESS_ADMIN_ONLY)
@@ -100,7 +101,8 @@ def deactivate_staff_user(
     user = auth_service.deactivate_staff_user(db, user_id, admin.business_id)
     if user is None:
         raise HTTPException(status_code=404, detail="Staff user not found")
-    return user
+    return 
+
 
 
 @router.delete("/users/{user_id}", status_code=204, tags=BUSINESS_ADMIN_ONLY)

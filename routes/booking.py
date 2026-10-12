@@ -7,12 +7,10 @@ from sqlalchemy.orm import Session
 import service.booking as booking_service
 from database.database import get_db
 from models import User
-from schemas.booking import BookingCreate, BookingListItem, BookingRead, ReturnRequest
-from utils.security import require_business_member
+from schemas.booking import BookingCreate, BookingListItem, BookingRead, BookingUpdate, ReturnRequest
+from utils.security import require_business_admin, require_business_member
 
 router = APIRouter(prefix="/bookings", tags=["Business Admin", "Staff"])
-
-
 @router.post("", response_model=BookingRead, status_code=201)
 def create_booking(
     payload: BookingCreate,
@@ -42,6 +40,22 @@ def get_booking(
     current_user: User = Depends(require_business_member),
 ):
     booking = booking_service.get_booking(db, booking_id, current_user.business_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return booking_service.to_booking_dict(booking)
+
+
+@router.put("/{booking_id}", response_model=BookingRead)
+def update_booking(
+    booking_id: UUID,
+    payload: BookingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_business_admin),
+):
+    try:
+        booking = booking_service.update_booking(db, booking_id, current_user.business_id, payload)
+    except booking_service.BookingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if booking is None:
         raise HTTPException(status_code=404, detail="Booking not found")
     return booking_service.to_booking_dict(booking)

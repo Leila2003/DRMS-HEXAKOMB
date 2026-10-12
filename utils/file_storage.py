@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from uuid import UUID
 
@@ -29,7 +30,12 @@ def save_customer_national_id_photo(customer_id: UUID, file: UploadFile) -> str:
     with destination.open("wb") as buffer:
         buffer.write(file.file.read())
 
-    return f"/uploads/customers/{customer_id}/national_id{extension}"
+    # The file always lands at the same path, so a re-upload would otherwise
+    # be served from browser cache under the old bytes. A version query
+    # param, stored as part of image_url itself, makes the URL change on
+    # every upload for every client, not just the one that made the change.
+    version = int(time.time() * 1000)
+    return f"/uploads/customers/{customer_id}/national_id{extension}?v={version}"
 
 
 def save_category_image(category_id: UUID, file: UploadFile) -> str:
@@ -47,4 +53,6 @@ def save_category_image(category_id: UUID, file: UploadFile) -> str:
     with destination.open("wb") as buffer:
         buffer.write(file.file.read())
 
-    return f"/uploads/categories/{category_id}/image{extension}"
+    # See the matching comment in save_customer_national_id_photo above.
+    version = int(time.time() * 1000)
+    return f"/uploads/categories/{category_id}/image{extension}?v={version}"

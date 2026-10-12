@@ -16,7 +16,7 @@ from models import (
     NotificationGroup,
     NotificationType,
 )
-from schemas.booking import BookingCreate, ReturnRequest
+from schemas.booking import BookingCreate, BookingUpdate, ReturnRequest
 
 DUE_SOON_DAYS = 2
 
@@ -53,6 +53,7 @@ def to_booking_dict(booking: Booking) -> dict:
         "price": booking.price,
         "caution": booking.caution,
         "total_amount": booking.price + booking.caution,
+        "caution_outcome": booking.caution_outcome,
         "status": booking.status,
         "lines": booking.items,
         "items": _grouped_items(booking),
@@ -70,6 +71,7 @@ def to_booking_list_dict(booking: Booking) -> dict:
         "price": booking.price,
         "caution": booking.caution,
         "total_amount": booking.price + booking.caution,
+        "caution_outcome": booking.caution_outcome,
         "status": booking.status,
         "items": _grouped_items(booking),
     }
@@ -136,6 +138,8 @@ def create_booking(db: Session, payload: BookingCreate, user_id: UUID, business_
                 customer = customer_service.create_customer(db, payload.new_customer, business_id)
             except ValueError as exc:
                 raise BookingError(str(exc)) from exc
+
+    booking.caution_outcome = payload.caution_outcome if booking.caution > 0 else None
 
     counts: Counter = Counter()
     for line in payload.items:
@@ -208,6 +212,67 @@ def get_booking(db: Session, booking_id: UUID, business_id: UUID, refresh: bool 
     return booking
 
 
+OPEN_STATUSES = (BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE)
+
+
+def update_booking(
+    db: Session, booking_id: UUID, business_id: UUID, payload: BookingUpdate
+) -> Optional[Booking]:
+    booking = get_booking(db, booking_id, business_id, refresh=False)
+    if booking is None:
+        return None
+    if booking.status not in OPEN_STATUSES:
+        raise BookingError("Only open bookings can be edited")
+
+    changes = payload.model_dump(exclude_unset=True)
+    pickup_date = changes.get("pickup_date") or booking.pickup_date
+    return_date = changes.get("return_date") or booking.return_date
+    if return_date < pickup_date:
+        raise BookingError("Return date must be on or after the pickup date")
+
+    for field in ("event_date", "pickup_date", "return_date", "caution"):
+        if field in changes and (changes[field] is not None or field == "event_date"):
+            setattr(booking, field, changes[field])
+
+    if payload.lines is not None:
+        items_by_id = {item.booking_item_id: item for item in booking.items}
+        deltas: Counter = Counter()
+        for line in payload.lines:
+            item = items_by_id.get(line.booking_item_id)
+            if item is None:
+                raise BookingError(f"Booking item {line.booking_item_id} not found")
+            deltas[item.category_id] += line.quantity - item.quantity
+
+        categories = {}
+        for category_id, delta in deltas.items():
+            category = category_service.get_category(db, category_id, business_id)
+            if category is None:
+                raise BookingError(f"Category {category_id} not found")
+            if delta > category.quantity_available:
+                raise BookingError(f"Only {category.quantity_available} more available in {category.item_name}")
+            categories[category_id] = category
+
+        for line in payload.lines:
+            item = items_by_id[line.booking_item_id]
+            item.quantity = line.quantity
+            item.unit_price = line.unit_price
+
+        for category_id, delta in deltas.items():
+            if delta:
+                category = categories[category_id]
+                category_service.adjust_rented(category, delta)
+                if delta > 0 and category_service.is_low_stock(category):
+                    notification_service.notify_low_stock(db, category)
+
+        booking.price = sum(item.unit_price * item.quantity for item in booking.items)
+
+    db.commit()
+    # Dates may have moved, so re-derive active/due/overdue.
+    refresh_all_statuses(db, business_id)
+    db.refresh(booking)
+    return booking
+
+
 def process_return(
     db: Session, booking_id: UUID, business_id: UUID, payload: ReturnRequest, user_id: UUID
 ) -> Optional[Booking]:
@@ -216,6 +281,8 @@ def process_return(
         return None
     if booking.status in (BookingStatus.RETURNED, BookingStatus.DAMAGED):
         raise BookingError("This booking has already been returned")
+    if booking.caution > 0 and payload.caution_outcome is None:
+        raise BookingError("Choose whether the caution is refunded to the customer or kept")
 
     now = datetime.now(timezone.utc)
     for item in booking.items:

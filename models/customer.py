@@ -26,14 +26,16 @@ class Customer(Timestamp, Base):
     contact = Column(String(30), index=True, nullable=False)
     referral_name = Column(String(150), nullable=True)
     referral_phone = Column(String(30), nullable=True)
-
+    
     business = relationship("Business")
     bookings = relationship("Booking", back_populates="customer")
+    # bookings = relationship("Booking", back_populates="customer")
 
     @property
     def rentals_count(self) -> int:
 
         return len(self.bookings)
+        
 
     def __repr__(self) -> str:
         return f"<Customer customer_id={self.customer_id} name={self.name!r}>"

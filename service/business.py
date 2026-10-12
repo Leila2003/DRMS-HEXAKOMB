@@ -5,7 +5,10 @@ from uuid import UUID
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
-from models import Booking, BookingStatus, Business, User, UserRole
+from models import Booking, BookingStatus, Business, Customer, User, UserRole
+
+
+OPEN_STATUSES = [BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE]
 
 
 def _to_dict(db: Session, business: Business) -> dict:
@@ -23,6 +26,21 @@ def _to_dict(db: Session, business: Business) -> dict:
         )
         .count()
     )
+    bookings = db.query(Booking).filter(
+        Booking.business_id == business.business_id, Booking.is_deleted.is_(False)
+    )
+    bookings_count = bookings.count()
+    active_rentals = bookings.filter(Booking.status.in_(OPEN_STATUSES)).count()
+    revenue = (
+        db.query(func.coalesce(func.sum(Booking.price), 0))
+        .filter(Booking.business_id == business.business_id, Booking.is_deleted.is_(False))
+        .scalar()
+    )
+    customers_count = (
+        db.query(Customer)
+        .filter(Customer.business_id == business.business_id, Customer.deleted_at.is_(None))
+        .count()
+    )
     return {
         "business_id": business.business_id,
         "name": business.name,
@@ -31,7 +49,12 @@ def _to_dict(db: Session, business: Business) -> dict:
         "created_at": business.created_at,
         "owner_name": owner.name if owner else None,
         "owner_email": owner.email if owner else None,
+        "owner_phone": owner.phone if owner else None,
         "staff_count": staff_count,
+        "bookings_count": bookings_count,
+        "active_rentals": active_rentals,
+        "customers_count": customers_count,
+        "revenue": revenue,
     }
 
 
@@ -67,9 +90,6 @@ def reactivate_business(db: Session, business_id: UUID) -> Optional[dict]:
     db.commit()
     db.refresh(business)
     return _to_dict(db, business)
-
-
-OPEN_STATUSES = [BookingStatus.ACTIVE, BookingStatus.DUE, BookingStatus.OVERDUE]
 
 
 def get_platform_summary(db: Session) -> dict:

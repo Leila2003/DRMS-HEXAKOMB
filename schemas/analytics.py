@@ -19,6 +19,11 @@ class TopCategory(BaseModel):
 class AnalyticsSummary(BaseModel):
     revenue: int
     revenue_label: str
+    total_revenue: int  # item amounts across all bookings (caution excluded)
+    revenue_gained: int  # item amounts from returned/damaged (closed) bookings
+    caution_held: int  # deposits on open bookings, refundable to customers
+    caution_refunded: int  # deposits given back to customers at return
+    caution_kept: int  # deposits retained by the business at return
     active_rentals: int
     most_rented_category: Optional[str] = None
     avg_rental_duration_days: float

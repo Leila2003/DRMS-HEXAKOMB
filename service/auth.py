@@ -123,8 +123,6 @@ def update_staff_user(db: Session, user_id, business_id, payload: UserUpdate) ->
         user.name = data["name"]
     if "phone" in data and data["phone"] is not None:
         user.phone = data["phone"]
-    if "password" in data and data["password"] is not None:
-        user.password_hash = hash_password(data["password"])
     if "is_active" in data and data["is_active"] is not None:
         user.is_deleted = not data["is_active"]
         user.deleted_at = None if data["is_active"] else datetime.now(timezone.utc)

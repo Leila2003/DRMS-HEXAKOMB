@@ -1,8 +1,4 @@
 .env
 venv
 __pycache__
-
-# Runtime-uploaded customer/category files and local DB dumps -
-# contain customer PII (national ID photos) / password hashes; never commit these.
-uploads/
-pre_migration_backup.json
+ca.pem

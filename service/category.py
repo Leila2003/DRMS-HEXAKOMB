@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
@@ -15,8 +16,9 @@ def is_low_stock(category: ItemCategory) -> bool:
     return category.quantity_available <= LOW_STOCK_THRESHOLD
 
 
-def create_category(db: Session, payload: CategoryCreate) -> ItemCategory:
+def create_category(db: Session, payload: CategoryCreate, business_id: UUID) -> ItemCategory:
     category = ItemCategory(
+        business_id=business_id,
         item_name=payload.item_name,
         item_type=payload.item_type,
         description=payload.description,
@@ -31,9 +33,9 @@ def create_category(db: Session, payload: CategoryCreate) -> ItemCategory:
 
 
 def upload_category_image(
-    db: Session, category_id: int, file: UploadFile
+    db: Session, category_id: UUID, business_id: UUID, file: UploadFile
 ) -> Optional[ItemCategory]:
-    category = get_category(db, category_id)
+    category = get_category(db, category_id, business_id)
     if category is None:
         return None
 
@@ -43,24 +45,26 @@ def upload_category_image(
     return category
 
 
-def list_categories(db: Session, search: Optional[str] = None) -> List[ItemCategory]:
-    query = db.query(ItemCategory).filter(ItemCategory.deleted_at.is_(None))
+def list_categories(db: Session, business_id: UUID, search: Optional[str] = None) -> List[ItemCategory]:
+    query = db.query(ItemCategory).filter(
+        ItemCategory.business_id == business_id, ItemCategory.deleted_at.is_(None)
+    )
     if search:
         query = query.filter(ItemCategory.item_name.ilike(f"%{search}%"))
     return query.order_by(ItemCategory.item_name).all()
 
 
-def get_category(db: Session, category_id: int) -> Optional[ItemCategory]:
+def get_category(db: Session, category_id: UUID, business_id: UUID) -> Optional[ItemCategory]:
     category = db.get(ItemCategory, category_id)
-    if category is None or category.deleted_at is not None:
+    if category is None or category.deleted_at is not None or category.business_id != business_id:
         return None
     return category
 
 
 def update_category(
-    db: Session, category_id: int, payload: CategoryUpdate
+    db: Session, category_id: UUID, business_id: UUID, payload: CategoryUpdate
 ) -> Optional[ItemCategory]:
-    category = get_category(db, category_id)
+    category = get_category(db, category_id, business_id)
     if category is None:
         return None
 
@@ -78,8 +82,8 @@ def update_category(
     return category
 
 
-def delete_category(db: Session, category_id: int) -> bool:
-    category = get_category(db, category_id)
+def delete_category(db: Session, category_id: UUID, business_id: UUID) -> bool:
+    category = get_category(db, category_id, business_id)
     if category is None:
         return False
 

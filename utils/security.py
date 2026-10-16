@@ -11,21 +11,15 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from database.database import get_db
-from models import User, UserRole
+from models import Business, User, UserRole
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-to-a-long-random-string-before-deploying")
+SECRET_KEY = os.getenv("SECRET_KEY", "99409eae6754e4f1f0b9f4680123ffe2b5fdae2e18c6288284763e13171fd028672cc6e0bd226c9026f60c4a3e2ccf3917c3098ad31ce3007e5848d259763ce0")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-# Plain "Authorization: Bearer <token>" scheme rather than the OAuth2
-# password-grant flow — the Swagger "Authorize" dialog just takes a raw
-# token, matching how POST /auth/login actually issues one.
-# auto_error=False so a missing header falls through to get_current_user,
-# which raises 401 itself — otherwise HTTPBearer's default is a 403 for a
-# missing header vs. 401 for a bad/expired one, an inconsistency callers
-# would have to special-case.
+
 bearer_scheme = HTTPBearer(
     bearerFormat="JWT",
     description="Paste the access_token from POST /auth/login.",
@@ -86,10 +80,39 @@ def get_current_user(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.business_id is not None:
+        business = db.get(Business, user.business_id)
+        if business is None or business.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="This business account has been deactivated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     return user
 
 
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+def require_business_admin(current_user: User = Depends(get_current_user)) -> User:
+
+    if current_user.role not in (UserRole.BUSINESS_ADMIN, UserRole.SUPER_ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Business admin privileges required")
+    if current_user.role == UserRole.BUSINESS_ADMIN and current_user.business_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account not linked to a business")
+    return current_user
+
+
+def require_business_member(current_user: User = Depends(get_current_user)) -> User:
+    
+    if current_user.business_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not attached to a business",
+        )
+    return current_user
+
+
+def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Platform-level only — for endpoints that manage businesses themselves,
+    not endpoints business_admins use."""
+    if current_user.role != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")
     return current_user

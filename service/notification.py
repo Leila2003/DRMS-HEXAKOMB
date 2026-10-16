@@ -1,4 +1,5 @@
 from typing import List, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -7,14 +8,16 @@ from models import ItemCategory, Notification, NotificationGroup, NotificationTy
 
 def create_notification(
     db: Session,
+    business_id: UUID,
     type: NotificationType,
     group: NotificationGroup,
     title: str,
     body: str,
-    booking_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    booking_id: Optional[UUID] = None,
+    category_id: Optional[UUID] = None,
 ) -> Notification:
     notification = Notification(
+        business_id=business_id,
         type=type,
         group=group,
         title=title,
@@ -30,6 +33,7 @@ def create_notification(
 def notify_low_stock(db: Session, category: ItemCategory) -> Notification:
     return create_notification(
         db,
+        business_id=category.business_id,
         type=NotificationType.WARN,
         group=NotificationGroup.LOW_STOCK,
         title=f"Low stock: {category.item_name}",
@@ -38,24 +42,24 @@ def notify_low_stock(db: Session, category: ItemCategory) -> Notification:
     )
 
 
-def list_notifications(db: Session) -> List[Notification]:
+def list_notifications(db: Session, business_id: UUID) -> List[Notification]:
     return (
         db.query(Notification)
-        .filter(Notification.is_deleted.is_(False))
+        .filter(Notification.business_id == business_id, Notification.is_deleted.is_(False))
         .order_by(Notification.created_at.desc())
         .all()
     )
 
 
-def get_notification(db: Session, notification_id: int) -> Optional[Notification]:
+def get_notification(db: Session, notification_id: UUID, business_id: UUID) -> Optional[Notification]:
     notification = db.get(Notification, notification_id)
-    if notification is None or notification.is_deleted:
+    if notification is None or notification.is_deleted or notification.business_id != business_id:
         return None
     return notification
 
 
-def mark_read(db: Session, notification_id: int) -> Optional[Notification]:
-    notification = get_notification(db, notification_id)
+def mark_read(db: Session, notification_id: UUID, business_id: UUID) -> Optional[Notification]:
+    notification = get_notification(db, notification_id, business_id)
     if notification is None:
         return None
     notification.read = True

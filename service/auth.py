@@ -1,19 +1,20 @@
+import os
 from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from models import User, UserRole
-from schemas.auth import UserCreate, UserUpdate
+from models.business import Business
+from schemas.auth import BusinessRegisterRequest, UserCreate, UserUpdate
 from utils.security import hash_password, verify_password
 
-# The single admin account is created from code, not from env vars or a
-# signup endpoint. There is only ever one admin; every other account made
-# through the API (POST /auth/users) is forced to UserRole.STAFF.
-DEFAULT_ADMIN_NAME = "Leila Mugeni"
-DEFAULT_ADMIN_EMAIL = "leilamugeni@gmail.com"
-DEFAULT_ADMIN_PHONE = "0789139940"
-DEFAULT_ADMIN_PASSWORD = "Mugeni@123"
+
+
+DEFAULT_SUPER_ADMIN_NAME = os.getenv("SUPER_ADMIN_NAME", "Super Admin")
+DEFAULT_SUPER_ADMIN_EMAIL = os.getenv("SUPER_ADMIN_EMAIL", "leilamugeni@gmail.com")
+DEFAULT_SUPER_ADMIN_PHONE = os.getenv("SUPER_ADMIN_PHONE")
+DEFAULT_SUPER_ADMIN_PASSWORD = os.getenv("SUPER_ADMIN_PASSWORD", "mugeni@123")
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
@@ -23,15 +24,47 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     return user
 
 
-def create_user(db: Session, payload: UserCreate, role: Optional[UserRole] = None) -> User:
-    """Create a user. `role` overrides payload.role when the caller must not
-    trust the client-supplied role (e.g. the staff-creation endpoint)."""
+def register_business(db: Session, payload: BusinessRegisterRequest) -> tuple[Business, User]:
+    """Public self-service signup: creates the Business and its owner
+    (business_admin) account together, atomically."""
+   
+    if db.query(User).filter(User.email == payload.owner_email).first():
+        raise ValueError("A user with this email already exists")
+
+    business = Business(
+        name=payload.business_name,
+        # email=payload.business_email,
+        phone=payload.business_phone,
+    )
+    db.add(business)
+    db.flush()  # get business.business_id without committing yet
+
+    owner = User(
+        name=payload.owner_name,
+        email=payload.owner_email,
+        phone=payload.owner_phone,
+        password_hash=hash_password(payload.owner_password),
+        role=UserRole.BUSINESS_ADMIN,
+        business_id=business.business_id,
+    )
+    db.add(owner)
+    db.commit()
+    db.refresh(business)
+    db.refresh(owner)
+    return business, owner
+
+
+def create_staff_user(db: Session, payload: UserCreate, business_id) -> User:
+    """Create a staff account scoped to the calling business_admin's business.
+    business_id always comes from the authenticated admin's token/user — never
+    from the request body."""
     user = User(
         name=payload.name,
         email=payload.email,
         phone=payload.phone,
         password_hash=hash_password(payload.password),
-        role=role if role is not None else payload.role,
+        role=UserRole.STAFF,
+        business_id=business_id,
     )
     db.add(user)
     db.commit()
@@ -39,46 +72,50 @@ def create_user(db: Session, payload: UserCreate, role: Optional[UserRole] = Non
     return user
 
 
-def seed_default_admin(db: Session) -> None:
-    """Ensure the single hardcoded admin account exists. Idempotent: does
-    nothing once an admin is present, so it's safe to call on every startup."""
-    has_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-    if has_admin is not None:
+def seed_default_super_admin(db: Session) -> None:
+    """Ensure a platform super_admin exists. Idempotent."""
+    has_super_admin = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
+    if has_super_admin is not None:
         return
 
-    existing = db.query(User).filter(User.email == DEFAULT_ADMIN_EMAIL).first()
+    existing = db.query(User).filter(User.email == DEFAULT_SUPER_ADMIN_EMAIL).first()
     if existing is not None:
         return
 
     admin = User(
-        name=DEFAULT_ADMIN_NAME,
-        email=DEFAULT_ADMIN_EMAIL,
-        phone=DEFAULT_ADMIN_PHONE,
-        password_hash=hash_password(DEFAULT_ADMIN_PASSWORD),
-        role=UserRole.ADMIN,
+        name=DEFAULT_SUPER_ADMIN_NAME,
+        email=DEFAULT_SUPER_ADMIN_EMAIL,
+        phone=DEFAULT_SUPER_ADMIN_PHONE,
+        password_hash=hash_password(DEFAULT_SUPER_ADMIN_PASSWORD),
+        role=UserRole.SUPER_ADMIN,
+        business_id=None,
     )
     db.add(admin)
     db.commit()
 
 
-def list_staff_users(db: Session) -> List[User]:
-    """Admin-facing directory of staff accounts (the admin itself is excluded
-    since it isn't managed through this list)."""
-    return (
-        db.query(User)
-        .filter(User.role == UserRole.STAFF)
-        .order_by(User.name)
-        .all()
-    )
+def list_staff_users(db: Session, business_id: Optional[object]) -> List[User]:
+   
+    query = db.query(User).filter(User.role == UserRole.STAFF)
+    if business_id is not None:
+        query = query.filter(User.business_id == business_id)
+    return query.order_by(User.name).all()
 
 
 def get_user(db: Session, user_id) -> Optional[User]:
     return db.get(User, user_id)
 
 
-def update_staff_user(db: Session, user_id, payload: UserUpdate) -> Optional[User]:
+def get_staff_user_in_business(db: Session, user_id, business_id) -> Optional[User]:
     user = get_user(db, user_id)
-    if user is None or user.role != UserRole.STAFF:
+    if user is None or user.role != UserRole.STAFF or user.business_id != business_id:
+        return None
+    return user
+
+
+def update_staff_user(db: Session, user_id, business_id, payload: UserUpdate) -> Optional[User]:
+    user = get_staff_user_in_business(db, user_id, business_id)
+    if user is None:
         return None
 
     data = payload.model_dump(exclude_unset=True)
@@ -86,8 +123,6 @@ def update_staff_user(db: Session, user_id, payload: UserUpdate) -> Optional[Use
         user.name = data["name"]
     if "phone" in data and data["phone"] is not None:
         user.phone = data["phone"]
-    if "password" in data and data["password"] is not None:
-        user.password_hash = hash_password(data["password"])
     if "is_active" in data and data["is_active"] is not None:
         user.is_deleted = not data["is_active"]
         user.deleted_at = None if data["is_active"] else datetime.now(timezone.utc)
@@ -97,14 +132,21 @@ def update_staff_user(db: Session, user_id, payload: UserUpdate) -> Optional[Use
     return user
 
 
-def deactivate_staff_user(db: Session, user_id) -> Optional[User]:
-    """Soft-deletes (deactivates) a staff account. Refuses to touch admins."""
-    user = get_user(db, user_id)
-    if user is None or user.role != UserRole.STAFF:
+def deactivate_staff_user(db: Session, user_id, business_id) -> Optional[User]:
+    user = get_staff_user_in_business(db, user_id, business_id)
+    if user is None:
         return None
-
     user.is_deleted = True
     user.deleted_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user)
     return user
+
+
+def delete_staff_user(db: Session, user_id, business_id) -> bool:
+    user = get_staff_user_in_business(db, user_id, business_id)
+    if user is None:
+        return False
+    db.delete(user)
+    db.commit()
+    return True
